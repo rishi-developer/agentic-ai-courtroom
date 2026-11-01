@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.config.settings import settings
 from app.database.connection import create_tables
 from app.models import Case
+from app.api.case_routes import router as case_router
 
 
 @asynccontextmanager
@@ -21,6 +22,7 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+app.include_router(case_router)
 
 @app.get("/")
 async def home():
