@@ -24,5 +24,6 @@ async def get_db():
         yield session
 
 async def create_tables():
+    import app.models
     async with engine.begin() as connection:
         await connection.run_sync(Base.metadata.create_all)

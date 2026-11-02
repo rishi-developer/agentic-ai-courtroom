@@ -25,12 +25,4 @@ backend/venv/
 .pytest_cache/
 .coverage
 
-check_settings.py
-test_async_graph.py
-test_checkpoint.py
-test_execution.py
-test_graph.py
-test_human_loop.py
-test_openai.py
-test_reducer.py
-test_streaming.py
+testing_files
