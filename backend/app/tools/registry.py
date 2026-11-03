@@ -45,3 +45,56 @@ WRITE_TOOLS = [
 
 # All registered tools
 ALL_TOOLS = READ_ONLY_TOOLS + WRITE_TOOLS
+
+
+AGENT_TOOLS = {
+    "prosecutor": [
+        get_case_details,
+        get_case_suspects,
+        get_case_evidence,
+        search_case_evidence,
+        get_case_witnesses,
+        get_witness_details
+    ],
+
+    "defense": [
+        get_case_details,
+        get_case_suspects,
+        get_case_evidence,
+        search_case_evidence,
+        get_case_witnesses,
+        get_witness_details
+    ],
+
+    "evidence_analyst": [
+        get_case_details,
+        get_case_evidence,
+        search_case_evidence,
+        get_case_witnesses,
+        get_witness_details
+    ],
+
+    "witness": [
+        get_witness_details
+    ],
+
+    "judge": [
+        get_case_details,
+        get_case_suspects,
+        get_case_evidence,
+        search_case_evidence,
+        get_case_witnesses,
+        get_witness_details
+    ]
+}
+
+
+def get_agent_tools(agent_name: str):
+    tools = AGENT_TOOLS.get(agent_name)
+
+    if tools is None:
+        raise ValueError(
+            f"Unknown agent: {agent_name}"
+        )
+
+    return tools

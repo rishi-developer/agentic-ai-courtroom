@@ -9,6 +9,7 @@ from app.database.connection import AsyncSessionLocal
 from app.models.case import Case
 from app.tools.tool_errors import tool_error_response
 from app.tools.tool_errors import tool_success_response
+from app.models.suspect import Suspect
 
 
 logger = logging.getLogger(__name__)
