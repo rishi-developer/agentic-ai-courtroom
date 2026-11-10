@@ -117,7 +117,7 @@ async def get_case_suspects(case_id: int) -> str:
                 for suspect in suspects
             ]
 
-            return json.dumps({
+            return tool_success_response({
                 "case_id": case_id,
                 "total_suspects": len(suspect_data),
                 "suspects": suspect_data
