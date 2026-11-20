@@ -133,4 +133,13 @@ builder.add_edge("additional_evidence_analysis", "prosecutor_argument")
 # Complete trial
 builder.add_edge("final_verdict", END)
 
-courtroom_graph = builder.compile()
+def compile_courtroom_graph(
+    checkpointer=None,
+    interrupt_before=None
+):
+    return builder.compile(
+        checkpointer=checkpointer,
+        interrupt_before=interrupt_before
+    )
+
+courtroom_graph = compile_courtroom_graph()

@@ -9,10 +9,15 @@ from app.tools.case_tools import (
     get_case_suspects
 )
 
+from app.services.verdict_service import save_verdict
+
+from app.services.trial_persistence_service import save_argument
+
 from app.tools.evidence_tools import get_case_evidence
 
 from app.tools.witness_tools import get_case_witnesses
-
+from app.database.connection import AsyncSessionLocal
+from app.services.trial_persistence_service import save_testimony
 
 from app.agents.witness import witness_agent
 from app.agents.judge import judge_evaluation_agent
@@ -29,6 +34,8 @@ from app.agents.judge import (
     generate_final_verdict
 )
 
+from sqlalchemy import select
+from app.models.trial import Trial
 
 def can_start_another_round(state: CourtroomState) -> bool:
     return state["current_round"] < MAX_DEBATE_ROUNDS
@@ -38,9 +45,11 @@ def can_investigate(state: CourtroomState) -> bool:
     return state["investigation_count"] < MAX_INVESTIGATION_CYCLES
 
 
+
 async def initialize_trial(state: CourtroomState):
 
     case_id = state["case_id"]
+    trial_id = state["trial_id"]
 
     case_result = await get_case_details.ainvoke({
         "case_id": case_id
@@ -77,6 +86,19 @@ async def initialize_trial(state: CourtroomState):
     if not witnesses_data["success"]:
         raise ValueError("Unable to retrieve witnesses")
 
+    # Update trial status in the database
+    async with AsyncSessionLocal() as db:
+        trial = await db.get(Trial, trial_id)
+
+        if not trial:
+            raise ValueError(f"Trial {trial_id} does not exist")
+
+        if trial.case_id != case_id:
+            raise ValueError("Trial does not belong to this case")
+
+        trial.status = "in_progress"
+        await db.commit()
+
     return {
         "case_details": case_data["data"],
         "suspects": suspects_data["data"]["suspects"],
@@ -84,7 +106,7 @@ async def initialize_trial(state: CourtroomState):
         "witnesses": witnesses_data["data"]["witnesses"],
         "current_stage": "initialization",
         "trial_status": "in_progress"
-    }   
+    }
 
 
 # def analyze_evidence(state: CourtroomState):
@@ -161,6 +183,8 @@ def conduct_investigation(state: CourtroomState):
         "current_stage": "investigation"
     }
 
+
+
 async def witness_response(state: CourtroomState):
 
     witness_id = state["selected_witness_id"]
@@ -186,6 +210,18 @@ async def witness_response(state: CourtroomState):
         previous_testimony=previous_testimony
     )
 
+    testimony_data = result.model_dump()
+    testimony_data["questioner"] = questioner
+    testimony_data["question"] = question
+
+    # Save testimony in the database
+    async with AsyncSessionLocal() as db:
+        await save_testimony(
+            db=db,
+            trial_id=state["trial_id"],
+            testimony_data=testimony_data
+        )
+
     updates = {
         "testimonies": [result.model_dump()],
         "questions_for_current_witness": (
@@ -205,6 +241,8 @@ async def witness_response(state: CourtroomState):
         )
 
     return updates
+
+
 
 async def judge_evaluation(state: CourtroomState):
     trial_context = {
@@ -292,6 +330,8 @@ async def select_witness(state: CourtroomState):
         "current_stage": "witness_selected"
     }
 
+
+
 async def prosecutor_argument(state: CourtroomState):
     trial_context = {
         "evidence": state["evidence"],
@@ -307,10 +347,23 @@ async def prosecutor_argument(state: CourtroomState):
         challenged_argument=str(trial_context)
     )
 
+    argument_data = result.model_dump()
+
+    # Save argument in the database
+    async with AsyncSessionLocal() as db:
+        await save_argument(
+            db=db,
+            trial_id=state["trial_id"],
+            argument_data=argument_data
+        )
+
     return {
-        "arguments": [result.model_dump()],
+        "arguments": [argument_data],
         "current_stage": "prosecutor_argument"
     }
+
+
+
 
 async def defense_argument(state: CourtroomState):
     trial_context = {
@@ -327,10 +380,24 @@ async def defense_argument(state: CourtroomState):
         challenged_argument=str(trial_context)
     )
 
+    argument_data = result.model_dump()
+
+    # Save argument in the database
+    async with AsyncSessionLocal() as db:
+        await save_argument(
+            db=db,
+            trial_id=state["trial_id"],
+            argument_data=argument_data
+        )
+
     return {
-        "arguments": [result.model_dump()],
+        "arguments": [argument_data],
         "current_stage": "defense_argument"
     }
+
+
+
+
 
 def route_after_judgment(state: CourtroomState):
 
@@ -406,6 +473,8 @@ async def increment_debate_round(state: CourtroomState):
         "current_stage": "new_debate_round"
     }
 
+
+
 async def final_verdict(state: CourtroomState):
 
     accused = (
@@ -430,11 +499,23 @@ async def final_verdict(state: CourtroomState):
         trial_context=str(trial_context)
     )
 
+    verdict_data = result.model_dump()
+
+    # Save verdict and mark trial as completed
+    async with AsyncSessionLocal() as db:
+        await save_verdict(
+            db=db,
+            trial_id=state["trial_id"],
+            verdict_data=verdict_data
+        )
+
     return {
-        "verdict": result.model_dump(),
+        "verdict": verdict_data,
         "trial_status": "completed",
         "current_stage": "trial_completed"
     }
+
+
 
 def advance_witness(state: CourtroomState):
     return {

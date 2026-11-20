@@ -26,3 +26,4 @@ backend/venv/
 .coverage
 
 testing_files
+courtroom_checkpoints.db
